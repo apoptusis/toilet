@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="content-language" content="zh-CN" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="full-screen" content="yes">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="browsermode" content="application">
+    <meta name="x5-page-mode" content="app">
+    <meta name="msapplication-tap-highlight" content="no">
+    <title>找厕所</title>
+    <script type="text/javascript" src="http://webapi.amap.com/maps?v=1.3&key=37f267b90f530d30f96e402b9ca5bd7c"></script>
+    <style type="text/css">
+        body,html,#container{
+            height: 100%;
+            margin: 0;
+        }
+        /*定位Icon*/
+        .locationIcon{
+            background-color: RGBA(255,255,255,0.7);
+            width: 36px;
+            height: 36px;
+            -webkit-border-radius: 4px;
+            -moz-border-radius: 4px;
+            border-radius: 4px;
+            box-shadow: 2px 2px 5px #888888;
+        }
+        .locationIcon > img {
+            width: 32px;
+            margin-left: 2px;
+            margin-top: 2px;
+        }
+        /*高德地图自带样式*/
+        .amap-logo img {
+            margin-left: 55px;
+            margin-bottom: 10px;
+        }
+        .amap-copyright {
+            display: none !important;
+        }
+        .amap-scalecontrol {
+            margin-left:58px;
+            margin-bottom:15px;
+        }
+        .makerStyle {
+            background-color: #FF4814;
+            font-size: 12px;
+            color: #fff;
+            -webkit-border-radius: 2px;
+            -moz-border-radius: 2px;
+            border-radius: 2px;
+            width: 50px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+        }
+        .infoWindow {
+            width: 280px;
+            height: 130px;
+            font-size: 13px;
+            background-color: #fff;
+            box-shadow: 2px 2px 2px #888;
+            padding-bottom: 20px;
+        }
+        .info_arrow {
+            height: 20px;
+            width: 20px;
+            transform: rotate(-45deg);
+            -ms-transform: rotate(-45deg);
+            -moz-transform: rotate(45deg);
+            -webkit-transform: rotate(45deg);
+            -o-transform: rotate(45deg);
+            padding-left: 0 !important;
+            position: absolute;
+            left: 125px;
+            top: 132px;
+            background-color: #ffffff;
+            z-index: 4;
+        }
+        .info_title{
+            background-color:#0090FF;
+            height: 28px;
+            line-height: 28px;
+            color: #fff;
+            padding-left: 10px;
+        }
+        .infoWindow>div {
+            padding-left: 10px;
+            margin-bottom: 5px;
+        }
+        .info_name {
+            margin-top:10px;
+        }
+        .info_address {
+            color: #434754;
+        }
+        .info_type {
+            color: #434754;
+        }
+        .dis_span {
+            color: #FA2D00;
+            font-weight: bold;
+        }
+        .info_close {
+            position: absolute;
+            width: 28px;
+            height: 26px;
+            right: 0;
+            top: 0;
+        }
+        .info_close>img {
+            margin-top: 3px;
+            right: 3px;
+            width: 20px;
+        }
+        .loc_circle {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #49B3F4;
+            border-radius: 50px;
+            background-color: #64C7FA;
+            opacity: 0.5;}
+        .loc_img {
+            position: relative;
+            left: 20px;
+            top: -34px;
+        }
+    </style>
+</head>
+<body>
+    <!--地图容器-->
+    <div id="container" tabindex="0"></div>
+    <script type="text/javascript">
+        // 检测浏览设备是否为iphone
+        var isiPhone = navigator.userAgent.toLocaleLowerCase().match(/iPhone/i);
+
+        // 实例map对象
+        var map = new AMap.Map('container',{
+            resizeEnable: true,
+            zoom: 15
+        });
+
+        //定位按钮的icon图标
+        var locationIcon = '<div class="locationIcon">' + '<img src="./geolocation.png"/>' + '</div>';
+
+        // 关闭信息窗体
+        function _closeInfoWindow(){
+            map.clearInfoWindow();
+        }
+
+        // 加载导航服务
+        var walking = null;
+        AMap.service('AMap.Walking', function(){
+            walking = new AMap.Walking({
+                map: map
+            });
+        });
+
+        //定位成功执行函数
+        var onComplete = function(data) {
+            map.clearMap();         // 清楚所有的覆盖物
+            doSearch(data);         // 搜索附近的厕所
+        };
+
+        //定位失败执行函数
+        var onError = function(){
+            alert('定位失败！请在手机上开启定位:设置->隐私->定位服务->找厕所->使用应用期间');
+        };
+
+        // 搜索附近的厕所方法
+        function doSearch(data) {
+            // 利用定位成功放回的info和type属性，判断定位是否成功
+            if (data.info === 'SUCCESS' && data.type === 'complete') {
+                // 获取当前定位的经纬度
+                var pos = data.position;
+                // 绘制当前定位的marker
+                var marker = new AMap.Marker({
+                    position: pos,
+                    map: map,
+                    content:'<div class="loc_circle"></div>' +
+                    '<img class="loc_img" src="loc.png" style="width:15px;position: relative;top: -35px;left:20px;"/>'
+                });
+                // 开启搜索服务
+                AMap.service(["AMap.PlaceSearch"], function() {
+                    var placeSearch = new AMap.PlaceSearch({
+                        pageSize: 10,
+                        extensions: 'base',
+                        type: '200300|200300|200302|200303'
+                    });
+                    // 根据关键字搜索
+                    placeSearch.searchNearBy("厕所", pos, 1500, function(status, result){
+                        // 查找成功
+                        if(result.info === 'OK' && status === 'complete') {
+                            var pois = result.poiList.pois;
+                            // 遍例查找到的位置坐标
+                            pois.forEach(function(poi){
+                                // 定义marker点的样式
+                                var divStr = '<div class="makerStyle">' + poi.distance + '米</div>';
+                                // 定义信息窗体样式
+                                var info = '<div class="infoWindow"><div class="info_title">卫生间</div>'
+                                        + '<div class="info_name">名称: ' + poi.name+ '</div>'
+                                        + '<div class="info_dis">距您: ' + '<span class="dis_span">' + poi.distance + '米</span>' + '</div>'
+                                        + '<div class="info_address">地址: ' + poi.address+ '</div>'
+                                        + '<div class="info_type">类型: ' + (poi.type || '卫生间')+ '</div>'
+                                        + '<div class="info_arrow"></div>';
+                                // 浏览器或iphone设备的关闭窗口按钮
+                                if(isiPhone && isiPhone.length){
+                                    info +='<div class="info_close" ontouchstart="_closeInfoWindow()"><img src="close_blue.png" style=""/></div>'
+                                            + '</div>';
+                                }else{
+                                    info += '<div class="info_close" onclick="_closeInfoWindow()"><img src="close_blue.png" style=""/></div>'
+                                            + '</div>';
+                                }
+                                // 添加厕所的marker点
+                                var marker = new AMap.Marker({
+                                    position: poi.location,
+                                    title: poi['name'],
+                                    map: map,
+                                    content: divStr,
+                                    offset: new AMap.Pixel(10,-25)
+                                });
+                                // 设置信息窗体
+                                function showInfo(){
+                                    var infowindow = new AMap.InfoWindow({
+                                        content: info,
+                                        offset: new AMap.Pixel(40,-35),
+                                        isCustom: true
+                                    });
+                                    infowindow.open(map, poi.location);
+//                                  // 路径规划导航
+                                    walking.clear();
+                                    var start = pos;
+                                    var end = poi.location;
+                                    walking.search(start, end, function(status, result){});
+                                }
+                                if(isiPhone && isiPhone.length){
+                                    AMap.event.addListener(marker, 'touchstart', showInfo);
+                                }else{
+                                    AMap.event.addListener(marker, 'click', showInfo);
+                                }
+                            });
+                            map.setZoom(16);
+                        } else {
+                            alert('附近没有厕所! T-T');
+                        }
+                    });
+                });
+            } else {
+                alert('调用地图服务错误！');
+            }
+        }
+
+        // 定位控件
+        map.plugin('AMap.Geolocation', function () {
+            geolocation = new AMap.Geolocation({
+                enableHighAccuracy: true,//是否使用高精度定位，默认:true
+                timeout: 10000,          //超过10秒后停止定位，默认：无穷大
+                maximumAge: 0,           //定位结果缓存0毫秒，默认：0
+                convert: true,           //自动偏移坐标，偏移后的坐标为高德坐标，默认：true
+                showButton: true,        //显示定位按钮，默认：true
+                buttonPosition: 'LB',    //定位按钮停靠位置，默认：'LB'，左下角
+                buttonOffset: new AMap.Pixel(10, 20),//定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                showMarker: true,        //定位成功后在定位到的位置显示点标记，默认：true
+                showCircle: true,        //定位成功后用圆圈表示定位精度范围，默认：true
+                panToLocation: true,     //定位成功后将定位到的位置作为地图中心点，默认：true
+                zoomToAccuracy:true,     //定位成功后调整地图视野范围使定位位置及精度范围视野内可见，默认：false
+                buttonDom: locationIcon
+            });
+            map.addControl(geolocation);
+            geolocation.getCurrentPosition();   // 页面加载完成后，自动定位
+            AMap.event.addListener(geolocation, 'complete', onComplete);        //返回定位信息
+            AMap.event.addListener(geolocation, 'error', onError);              //返回定位出错信息
+        });
+
+        // 放大缩小控件
+        map.plugin(["AMap.ToolBar"],function() {
+            map.addControl(new AMap.ToolBar());
+        });
+
+        // 比例尺控件
+        map.plugin(["AMap.Scale"],function(){
+            var scale = new AMap.Scale();
+            map.addControl(scale);
+        });
+
+        // 让logo超链接失效
+        document.querySelector('a.amap-logo').onclick = function(){
+            return false;
+        };
+    </script>
+</body>
+</html>
