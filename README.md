@@ -7,7 +7,9 @@
 
 ### 1.1 Node.js环境搭建
 - 下载安装node.js
+
 - Windows系统需要安装git bash（也可以使用cmd）
+
 - Mac 系统自带bash
 
 1. 安装express框架
